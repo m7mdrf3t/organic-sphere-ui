@@ -1,23 +1,37 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useEffect, useRef } from "react";
+import Experience from "./Experience/Experience";
 
 function App() {
+  const containerRef = useRef();
+
+  useEffect(() => {
+    let experience;
+    if (containerRef.current) {
+      experience = new Experience({
+        targetElement: containerRef.current,
+      });
+    }
+    return () => {
+      if (experience && experience.destroy) experience.destroy();
+    };
+  }, []);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      <div
+        ref={containerRef}
+        style={{
+          width: "100vw",
+          height: "100vh",
+          position: "absolute",
+          top: 0,
+          left: 0,
+          zIndex: 1,
+        }}
+      />
+      <div style={{ position: "absolute", zIndex: 2, color: "white", padding: "20px" }}>
+        Hello World
+      </div>
     </div>
   );
 }
