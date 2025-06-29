@@ -8,11 +8,15 @@
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "@types/three": "^0.177.0",
-    "convai-chatui-sdk": "^0.0.5",
+    "axios": "^1.10.0",
+    "convai-web-sdk": "^0.1.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-scripts": "5.0.1",
+    "socket.io-client": "^4.8.1",
+    "stats.js": "^0.17.0",
     "three": "^0.177.0",
+    "tweakpane": "^3.1.7",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
@@ -38,5 +42,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss-preset-env": "^10.2.4"
   }
 }

@@ -375,9 +375,9 @@ export default class Sphere
 
                 uOffset: { value: new THREE.Vector3() },
 
-                uDistortionFrequency: { value: 0.9 },
-                uDistortionStrength: { value: 0.65 },
-                uDisplacementFrequency: { value: 0.820 },
+                uDistortionFrequency: { value: 0.7 },
+                uDistortionStrength: { value: 0.3 },
+                uDisplacementFrequency: { value: 0.620 },
                 uDisplacementStrength: { value: 0.452 },
 
                 uFresnelOffset: { value: -1.609 },
@@ -507,7 +507,7 @@ export default class Sphere
         // Update material
         if(this.audioSource && this.audioSource.isPlaying)
         {
-            this.material.uniforms.uDisplacementStrength.value = this.audioSource.volume * 2;
+            this.material.uniforms.uDisplacementStrength.value = this.audioSource.volume ;
         }
         // else
         // {
@@ -518,7 +518,7 @@ export default class Sphere
         this.material.uniforms.uFresnelMultiplier.value = this.variations.mediumLevel.current
 
         // Offset
-        const offsetTime = this.elapsedTime * 0.3
+        const offsetTime = this.elapsedTime * 0.01
         this.offset.spherical.phi = ((Math.sin(offsetTime * 0.001) * Math.sin(offsetTime * 0.00321)) * 0.5 + 0.5) * Math.PI
         this.offset.spherical.theta = ((Math.sin(offsetTime * 0.0001) * Math.sin(offsetTime * 0.000321)) * 0.5 + 0.5) * Math.PI * 2
         this.offset.direction.setFromSpherical(this.offset.spherical)

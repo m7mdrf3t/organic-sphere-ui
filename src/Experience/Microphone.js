@@ -10,21 +10,31 @@ export default class Microphone
         this.volume = 0
         this.levels = []
 
-        navigator.mediaDevices
-            .getUserMedia({ audio: true, video: false })
-            .then((_stream) =>
-            {
-                this.stream = _stream
+    
+        // navigator.mediaDevices
+        //     .getUserMedia({ audio: false, video: false })
+        //     .then((_stream) =>
+        //     {
+        //         this.stream = _stream
 
-                this.init()
+        //         this.init()
 
-                if(this.debug)
-                {
-                    this.setSpectrum()
-                }
-            })
+        //         if(this.debug)
+        //         {
+        //             this.setSpectrum()
+        //         }
+        //     })
     }
 
+
+    setStream(_stream) {
+        this.stream = _stream
+        this.init()
+        if (this.debug) {
+            this.setSpectrum()
+        }
+    }
+    
     init()
     {
         this.audioContext = new AudioContext()
