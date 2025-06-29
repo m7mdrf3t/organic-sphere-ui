@@ -47,6 +47,27 @@ const ConvaiChat = () => {
       },
     });
 
+    // --- Register TTS audio element for sphere ripples ---
+    // Try to find the audio element used by ConvaiClient (if any)
+    setTimeout(() => {
+      // Try to find an <audio> element in the DOM
+      const audioEl = document.querySelector('audio');
+      if (audioEl && window.setGeminiTTSAudioElement) {
+        window.setGeminiTTSAudioElement(audioEl);
+        console.log('[DEBUG] ConvaiChat: Registered TTS audio element for sphere ripples');
+      }
+    }, 1000);
+    // Fallback: watch for audio element being added later
+    const observer = new MutationObserver(() => {
+      const audioEl = document.querySelector('audio');
+      if (audioEl && window.setGeminiTTSAudioElement) {
+        window.setGeminiTTSAudioElement(audioEl);
+        console.log('[DEBUG] ConvaiChat: Registered TTS audio element via MutationObserver');
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
     convaiClient.current.setErrorCallback((type, message) => {
       setMessages(prev => [...prev, `Error: ${message}`]);
       console.error(type, message); // Use console.error for errors

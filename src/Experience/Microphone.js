@@ -9,21 +9,7 @@ export default class Microphone
         this.ready = false
         this.volume = 0
         this.levels = []
-
-    
-        // navigator.mediaDevices
-        //     .getUserMedia({ audio: false, video: false })
-        //     .then((_stream) =>
-        //     {
-        //         this.stream = _stream
-
-        //         this.init()
-
-        //         if(this.debug)
-        //         {
-        //             this.setSpectrum()
-        //         }
-        //     })
+        console.log('[DEBUG] Microphone: constructor called');
     }
 
 
@@ -37,6 +23,7 @@ export default class Microphone
     
     init()
     {
+        console.log('[DEBUG] Microphone: init called');
         this.audioContext = new AudioContext()
         
         this.mediaStreamSourceNode = this.audioContext.createMediaStreamSource(this.stream)
@@ -50,6 +37,7 @@ export default class Microphone
         this.byteFrequencyData = new Uint8Array(this.analyserNode.fftSize)
         
         this.ready = true
+        console.log('[DEBUG] Microphone: ready set to true');
     }
 
     setSpectrum()
@@ -133,8 +121,19 @@ export default class Microphone
 
     update()
     {
-        if(!this.ready)
+        if(!this.ready) {
+            // Only log once to avoid spam
+            if (!this._notReadyLogged) {
+                console.log('[DEBUG] Microphone: update called but not ready');
+                this._notReadyLogged = true;
+            }
             return
+        } else {
+            if (this._notReadyLogged) {
+                console.log('[DEBUG] Microphone: now ready in update');
+                this._notReadyLogged = false;
+            }
+        }
 
         // Retrieve audio data
         this.analyserNode.getByteFrequencyData(this.byteFrequencyData)

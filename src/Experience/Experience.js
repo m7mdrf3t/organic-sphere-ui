@@ -137,19 +137,48 @@ export default class Experience
         if(this.microphone) this.microphone.update()
         if(this.geminiTTSAudio) this.geminiTTSAudio.update()
 
-        // Audio source selection logic
-        let selectedAudioSource = null;
-        if(this.geminiTTSAudio && this.geminiTTSAudio.isPlaying) {
-            selectedAudioSource = this.geminiTTSAudio;
-        } else if(this.microphone && this.microphone.ready && this.microphone.volume > 0.02) {
-            selectedAudioSource = this.microphone;
-        } else {
-            selectedAudioSource = null;
+        // Debug: log microphone, TTS, and blended audio levels/volume
+        if (this.microphone && this.microphone.ready) {
+            console.log('[DEBUG] Microphone:', {
+                volume: this.microphone.volume,
+                levels: this.microphone.levels
+            });
+        }
+        if (this.geminiTTSAudio && this.geminiTTSAudio.ready) {
+            console.log('[DEBUG] GeminiTTS:', {
+                volume: this.geminiTTSAudio.volume,
+                levels: this.geminiTTSAudio.levels
+            });
         }
 
-        // Pass the selected audio source to the sphere
+        // Audio source blending: use the louder of mic or TTS at any moment
+        let blendedAudioSource = null;
+        if (this.microphone && this.microphone.ready && this.geminiTTSAudio && this.geminiTTSAudio.ready) {
+            // Both available: blend
+            const micLevels = this.microphone.levels || [];
+            const ttsLevels = this.geminiTTSAudio.levels || [];
+            const maxLen = Math.max(micLevels.length, ttsLevels.length);
+            const blendedLevels = [];
+            for (let i = 0; i < maxLen; i++) {
+                blendedLevels[i] = Math.max(micLevels[i] || 0, ttsLevels[i] || 0);
+            }
+            blendedAudioSource = {
+                ready: true,
+                volume: Math.max(this.microphone.volume || 0, this.geminiTTSAudio.volume || 0),
+                levels: blendedLevels
+            };
+        } else if (this.microphone && this.microphone.ready) {
+            blendedAudioSource = this.microphone;
+        } else if (this.geminiTTSAudio && this.geminiTTSAudio.ready) {
+            blendedAudioSource = this.geminiTTSAudio;
+        } else {
+            blendedAudioSource = null;
+        }
+        console.log('[DEBUG] BlendedAudioSource:', blendedAudioSource);
+
+        // Pass the blended audio source to the sphere
         if(this.world && this.world.sphere) {
-            this.world.sphere.audioSource = selectedAudioSource;
+            this.world.sphere.audioSource = blendedAudioSource;
         }
 
         if(this.world)

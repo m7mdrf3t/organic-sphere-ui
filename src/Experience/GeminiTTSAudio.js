@@ -18,10 +18,12 @@ export default class GeminiTTSAudio
         this.audioContext = null
         this.mediaElementSourceNode = null
         this.analyserNode = null
+        console.log('[DEBUG] GeminiTTSAudio: constructor called');
     }
 
     setAudioElement(_element)
     {
+        console.log('[DEBUG] GeminiTTSAudio: setAudioElement called', _element);
         if (this.audioContext) {
             this.destroy();
         }
@@ -36,6 +38,7 @@ export default class GeminiTTSAudio
 
     init()
     {
+        console.log('[DEBUG] GeminiTTSAudio: init called');
         this.audioContext = new AudioContext()
         
         this.mediaElementSourceNode = this.audioContext.createMediaElementSource(this.audioElement)
@@ -50,6 +53,7 @@ export default class GeminiTTSAudio
         this.byteFrequencyData = new Uint8Array(this.analyserNode.fftSize)
         
         this.ready = true
+        console.log('[DEBUG] GeminiTTSAudio: ready set to true');
     }
 
     getLevels()
@@ -88,8 +92,19 @@ export default class GeminiTTSAudio
 
     update()
     {
-        if(!this.ready)
+        if(!this.ready) {
+            // Only log once to avoid spam
+            if (!this._notReadyLogged) {
+                console.log('[DEBUG] GeminiTTSAudio: update called but not ready');
+                this._notReadyLogged = true;
+            }
             return
+        } else {
+            if (this._notReadyLogged) {
+                console.log('[DEBUG] GeminiTTSAudio: now ready in update');
+                this._notReadyLogged = false;
+            }
+        }
 
         // Retrieve audio data
         this.analyserNode.getByteFrequencyData(this.byteFrequencyData)

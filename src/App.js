@@ -29,6 +29,26 @@ function App() {
       // Store the experience instance in both ref and window for debugging
       experienceRef.current = experience;
       window.experience = experience;
+
+      // Microphone initialization
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          if (window.experience && window.experience.microphone) {
+            window.experience.microphone.setStream(stream);
+            console.log('[DEBUG] Microphone: setStream called');
+          }
+        })
+        .catch(err => {
+          console.error('Microphone access denied:', err);
+        });
+
+      // Helper for TTS audio element registration
+      window.setGeminiTTSAudioElement = (audioElement) => {
+        if (window.experience && window.experience.geminiTTSAudio) {
+          window.experience.geminiTTSAudio.setAudioElement(audioElement);
+          console.log('[DEBUG] GeminiTTSAudio: setAudioElement called from App');
+        }
+      };
       
       console.log('Experience initialized:', experience);
       setIsExperienceReady(true);
