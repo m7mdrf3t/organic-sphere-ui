@@ -1,3 +1,34 @@
+// Global Web Audio patch for Convai TTS analysis
+(function() {
+  if (typeof window !== 'undefined' && window.AudioContext && !window.__AUDIO_PATCHED_FOR_TTS__) {
+    window.__AUDIO_PATCHED_FOR_TTS__ = true;
+    const OriginalAudioContext = window.AudioContext;
+    window.AudioContext = function(...args) {
+      const ctx = new OriginalAudioContext(...args);
+      const origCreateBufferSource = ctx.createBufferSource;
+      ctx.createBufferSource = function(...bsArgs) {
+        const source = origCreateBufferSource.apply(ctx, bsArgs);
+        // Attach analyser node if not present
+        if (!ctx._ttsAnalyser) {
+          const analyser = ctx.createAnalyser();
+          analyser.fftSize = 2048;
+          ctx._ttsAnalyser = analyser;
+          ctx._ttsAnalyserData = new Uint8Array(analyser.frequencyBinCount);
+          // Connect to destination
+          analyser.connect(ctx.destination);
+          window.latestTTSAnalyser = analyser;
+          console.log('[DEBUG] GlobalAudioPatch: Created and exposed TTS analyser node.');
+        }
+        // Connect source to analyser
+        source.connect(ctx._ttsAnalyser);
+        return source;
+      };
+      return ctx;
+    };
+    window.AudioContext.prototype = OriginalAudioContext.prototype;
+  }
+})();
+
 import React, { useEffect, useRef, useState } from 'react';
 import './App.css';
 import Experience from './Experience/Experience';

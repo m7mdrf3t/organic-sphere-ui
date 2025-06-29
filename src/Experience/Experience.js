@@ -138,18 +138,18 @@ export default class Experience
         if(this.geminiTTSAudio) this.geminiTTSAudio.update()
 
         // Debug: log microphone, TTS, and blended audio levels/volume
-        if (this.microphone && this.microphone.ready) {
-            console.log('[DEBUG] Microphone:', {
-                volume: this.microphone.volume,
-                levels: this.microphone.levels
-            });
-        }
-        if (this.geminiTTSAudio && this.geminiTTSAudio.ready) {
-            console.log('[DEBUG] GeminiTTS:', {
-                volume: this.geminiTTSAudio.volume,
-                levels: this.geminiTTSAudio.levels
-            });
-        }
+        // if (this.microphone && this.microphone.ready) {
+        //     console.log('[DEBUG] Microphone:', {
+        //         volume: this.microphone.volume,
+        //         levels: this.microphone.levels
+        //     });
+        // }
+        // if (this.geminiTTSAudio && this.geminiTTSAudio.ready) {
+        //     console.log('[DEBUG] GeminiTTS:', {
+        //         volume: this.geminiTTSAudio.volume,
+        //         levels: this.geminiTTSAudio.levels
+        //     });
+        // }
 
         // Audio source blending: use the louder of mic or TTS at any moment
         let blendedAudioSource = null;
@@ -174,7 +174,6 @@ export default class Experience
         } else {
             blendedAudioSource = null;
         }
-        console.log('[DEBUG] BlendedAudioSource:', blendedAudioSource);
 
         // Pass the blended audio source to the sphere
         if(this.world && this.world.sphere) {

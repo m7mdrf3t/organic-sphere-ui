@@ -5,7 +5,8 @@ export default class GeminiTTSAudio
     constructor()
     {
         this.experience = new Experience()
-        this.debug = this.experience.debug
+        this.debug = true // Force debug logging for troubleshooting
+        // this.debug = this.experience.debug
         
         this.audioElement = null
         this.ready = false
@@ -19,11 +20,16 @@ export default class GeminiTTSAudio
         this.mediaElementSourceNode = null
         this.analyserNode = null
         console.log('[DEBUG] GeminiTTSAudio: constructor called');
+        if (this.debug) {
+            console.log('[DEBUG] GeminiTTSAudio: debug logging enabled');
+        }
     }
 
     setAudioElement(_element)
     {
-        console.log('[DEBUG] GeminiTTSAudio: setAudioElement called', _element);
+        if (this.debug) {
+            console.log('[DEBUG] GeminiTTSAudio: setAudioElement called', _element);
+        }
         if (this.audioContext) {
             this.destroy();
         }
@@ -53,7 +59,9 @@ export default class GeminiTTSAudio
         this.byteFrequencyData = new Uint8Array(this.analyserNode.fftSize)
         
         this.ready = true
-        console.log('[DEBUG] GeminiTTSAudio: ready set to true');
+        if (this.debug) {
+            console.log('[DEBUG] GeminiTTSAudio: ready set to true');
+        }
     }
 
     getLevels()
@@ -92,26 +100,52 @@ export default class GeminiTTSAudio
 
     update()
     {
-        if(!this.ready) {
-            // Only log once to avoid spam
-            if (!this._notReadyLogged) {
-                console.log('[DEBUG] GeminiTTSAudio: update called but not ready');
-                this._notReadyLogged = true;
-            }
-            return
-        } else {
-            if (this._notReadyLogged) {
-                console.log('[DEBUG] GeminiTTSAudio: now ready in update');
-                this._notReadyLogged = false;
+        if (this.debug) {
+            console.log('[DEBUG] GeminiTTSAudio: update() called, ready?', this.ready);
+        }
+        // If global analyser exists but not ready, set ready
+        if (!this.ready && typeof window !== 'undefined' && window.latestTTSAnalyser) {
+            this.ready = true;
+            if (this.debug) {
+                console.log('[DEBUG] GeminiTTSAudio: ready set to true (global analyser detected)');
             }
         }
+        if(!this.ready) {
+            return
+        }
 
-        // Retrieve audio data
-        this.analyserNode.getByteFrequencyData(this.byteFrequencyData)
-        this.analyserNode.getFloatTimeDomainData(this.floatTimeDomainData)
-        
-        this.volume = this.getVolume()
-        this.levels = this.getLevels()
+        // Use global analyser if present
+        let analyser = null;
+        if (typeof window !== 'undefined' && window.latestTTSAnalyser) {
+            analyser = window.latestTTSAnalyser;
+            if (!this.byteFrequencyData || this.byteFrequencyData.length !== analyser.frequencyBinCount) {
+                this.byteFrequencyData = new Uint8Array(analyser.frequencyBinCount);
+            }
+            if (!this.floatTimeDomainData || this.floatTimeDomainData.length !== analyser.fftSize) {
+                this.floatTimeDomainData = new Float32Array(analyser.fftSize);
+            }
+            analyser.getByteFrequencyData(this.byteFrequencyData);
+            analyser.getFloatTimeDomainData(this.floatTimeDomainData);
+            this.volume = this.byteFrequencyData.reduce((a, b) => a + b, 0) / this.byteFrequencyData.length / 256;
+            this.levels = Array.from(this.byteFrequencyData).map(v => v / 256);
+            if(this.debug)
+            {
+                console.log('[DEBUG] GeminiTTSAudio: update using global analyser', this.volume, this.levels);
+            }
+        } else if(this.analyserNode) {
+            this.analyserNode.getByteFrequencyData(this.byteFrequencyData)
+            this.analyserNode.getFloatTimeDomainData(this.floatTimeDomainData)
+            this.volume = this.byteFrequencyData.reduce((a, b) => a + b, 0) / this.byteFrequencyData.length / 256
+            this.levels = Array.from(this.byteFrequencyData).map(v => v / 256)
+            if(this.debug)
+            {
+                console.log('[DEBUG] GeminiTTSAudio: update analyser volume/levels', this.volume, this.levels)
+            }
+        }
+        else
+        {
+            console.log('[DEBUG] GeminiTTSAudio: no analyserNode or global analyser, skipping update')
+        }
     }
 
     destroy()

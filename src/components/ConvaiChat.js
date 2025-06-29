@@ -6,6 +6,7 @@ import Experience from '../Experience/Experience';
 import './ConvaiChat.css';
 
 const ConvaiChat = () => {
+  console.log('[DEBUG] ConvaiChat: Mounted');
   const [messages, setMessages] = useState(['Welcome to Convai Chat!']);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,27 +47,6 @@ const ConvaiChat = () => {
         voiceId: 'default',
       },
     });
-
-    // --- Register TTS audio element for sphere ripples ---
-    // Try to find the audio element used by ConvaiClient (if any)
-    setTimeout(() => {
-      // Try to find an <audio> element in the DOM
-      const audioEl = document.querySelector('audio');
-      if (audioEl && window.setGeminiTTSAudioElement) {
-        window.setGeminiTTSAudioElement(audioEl);
-        console.log('[DEBUG] ConvaiChat: Registered TTS audio element for sphere ripples');
-      }
-    }, 1000);
-    // Fallback: watch for audio element being added later
-    const observer = new MutationObserver(() => {
-      const audioEl = document.querySelector('audio');
-      if (audioEl && window.setGeminiTTSAudioElement) {
-        window.setGeminiTTSAudioElement(audioEl);
-        console.log('[DEBUG] ConvaiChat: Registered TTS audio element via MutationObserver');
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
 
     convaiClient.current.setErrorCallback((type, message) => {
       setMessages(prev => [...prev, `Error: ${message}`]);
@@ -255,6 +235,48 @@ const ConvaiChat = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, userText, npcText]); // Scroll when messages, userText, or npcText change
+
+  // --- Register TTS audio element for sphere ripples when NPC starts talking ---
+  useEffect(() => {
+    if (!isTalking) return;
+    console.log('[DEBUG] ConvaiChat: isTalking true, searching for <audio> elements for TTS');
+    // Search main document
+    let audioEls = Array.from(document.querySelectorAll('audio'));
+    // Search all iframes
+    document.querySelectorAll('iframe').forEach((iframe) => {
+      try {
+        const iframeAudios = Array.from(iframe.contentDocument.querySelectorAll('audio'));
+        audioEls = audioEls.concat(iframeAudios);
+      } catch (e) {
+        // cross-origin iframe, ignore
+      }
+    });
+    if (audioEls.length === 0) {
+      console.warn('[DEBUG] ConvaiChat: No <audio> elements found in DOM for TTS');
+    } else {
+      audioEls.forEach((audioEl, idx) => {
+        console.log(`[DEBUG] ConvaiChat: Found <audio> element #${idx}:`, audioEl, {
+          src: audioEl.src,
+          currentTime: audioEl.currentTime,
+          paused: audioEl.paused,
+          ended: audioEl.ended,
+          readyState: audioEl.readyState,
+          networkState: audioEl.networkState,
+          volume: audioEl.volume,
+          muted: audioEl.muted
+        });
+        audioEl.onplay = () => console.log(`[DEBUG] <audio> #${idx} play`);
+        audioEl.onpause = () => console.log(`[DEBUG] <audio> #${idx} pause`);
+        audioEl.onended = () => console.log(`[DEBUG] <audio> #${idx} ended`);
+        audioEl.ontimeupdate = () => console.log(`[DEBUG] <audio> #${idx} timeupdate:`, audioEl.currentTime);
+      });
+      // Register the first audio element for analysis
+      if (window.setGeminiTTSAudioElement) {
+        window.setGeminiTTSAudioElement(audioEls[0]);
+        console.log('[DEBUG] ConvaiChat: Registered TTS audio element for sphere ripples');
+      }
+    }
+  }, [isTalking]);
 
   // --- RENDER ---
   return (
