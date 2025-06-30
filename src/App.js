@@ -49,6 +49,9 @@ function App() {
     console.log('[DEBUG] [App] startListening called');
     if (!isListening) {
       setIsListening(true);
+      // Update global listening state for sphere visualization
+      window.convaiIsListening = true;
+      
       // Get the convaiClient from the window object (set by ConvaiChat component)
       const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
       
@@ -69,6 +72,9 @@ function App() {
     console.log('[DEBUG] [App] stopListening called');
     if (isListening) {
       setIsListening(false);
+      // Update global listening state for sphere visualization
+      window.convaiIsListening = false;
+      
       // Get the convaiClient from the window object
       const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
       
