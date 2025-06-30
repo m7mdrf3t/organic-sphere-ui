@@ -162,34 +162,7 @@ function App() {
         }}
       />
       
-      {/* Chat Toggle Button */}
-      <button 
-        onClick={toggleChat}
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          background: 'rgba(124, 58, 237, 0.9)',
-          color: 'white',
-          border: 'none',
-          borderRadius: '50%',
-          width: '50px',
-          height: '50px',
-          fontSize: '24px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 100,
-          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-          transition: 'transform 0.2s, background 0.2s',
-        }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
-        aria-label="Toggle chat"
-      >
-        💬
-      </button>
+      {/* Chat Toggle Button hidden as requested */}
 
       {/* Floating push-to-talk mic button, always visible */}
       <div style={{
@@ -312,13 +285,7 @@ function App() {
       </div>
 
       {/* Convai Chat Interface - Only render when experience is ready */}
-      {isExperienceReady && (
-        <ConvaiChat 
-          isVisible={showChat} 
-          onClose={() => setShowChat(false)}
-          onTextUpdate={handleTextUpdate}
-        />
-      )}
+      {/* ConvaiChat widget hidden as requested */}
 
       {/* Visual feedback when NPC is talking */}
       {isNpcTalking && (
