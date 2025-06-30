@@ -6,7 +6,8 @@ import Experience from '../Experience/Experience';
 import './ConvaiChat.css';
 
 const ConvaiChat = () => {
-  console.log('[DEBUG] ConvaiChat: Mounted');
+  const [minimized, setMinimized] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState(['Welcome to Convai Chat!']);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +48,11 @@ const ConvaiChat = () => {
         voiceId: 'default',
       },
     });
+    
+    // Expose convaiClient and refs to window for global access
+    window.convaiClient = convaiClient.current;
+    window.finalizedUserText = finalizedUserText;
+    window.npcTextRef = npcTextRef;
 
     convaiClient.current.setErrorCallback((type, message) => {
       setMessages(prev => [...prev, `Error: ${message}`]);
@@ -278,9 +284,83 @@ const ConvaiChat = () => {
     }
   }, [isTalking]);
 
+  // Expose isListening globally for Experience.js
+  useEffect(() => {
+    window.convaiIsListening = isListening;
+  }, [isListening]);
+
+
+  // --- Unified push-to-talk logic ---
+  const startListening = useCallback(() => {
+    console.log('[DEBUG] startListening called');
+    if (!isListening) {
+      setIsListening(true);
+      if (convaiClient.current && typeof convaiClient.current.startListening === 'function') {
+        console.log('[DEBUG] Calling convaiClient.current.startListening()');
+        convaiClient.current.startListening();
+      } else {
+        console.log('[DEBUG] convaiClient.current.startListening is not a function');
+      }
+    }
+  }, [isListening]);
+  const stopListening = useCallback(() => {
+    console.log('[DEBUG] stopListening called');
+    if (isListening) {
+      setIsListening(false);
+      if (convaiClient.current && typeof convaiClient.current.stopListening === 'function') {
+        console.log('[DEBUG] Calling convaiClient.current.stopListening()');
+        convaiClient.current.stopListening();
+      } else {
+        console.log('[DEBUG] convaiClient.current.stopListening is not a function');
+      }
+    }
+  }, [isListening]);
+
+  // Keyboard: hold/release 'T' for push-to-talk
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.key === 't' || e.key === 'T')) {
+        startListening();
+      }
+    };
+    const handleKeyUp = (e) => {
+      if ((e.key === 't' || e.key === 'T')) {
+        stopListening();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [startListening, stopListening]);
+
   // --- RENDER ---
+  if (minimized) {
+    return (
+      <button
+        className="convai-chat-minimize-btn"
+        style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200 }}
+        onClick={() => setMinimized(false)}
+        aria-label="Open chat"
+      >
+        💬
+      </button>
+    );
+  }
+
   return (
     <div className="convai-chat-container">
+      {/* Minimize button */}
+      <button
+        className="convai-chat-minimize-btn"
+        style={{ position: 'absolute', top: 10, right: 10, zIndex: 200 }}
+        onClick={() => setMinimized(true)}
+        aria-label="Minimize chat"
+      >
+        &minus;
+      </button>
       {/* Listening indicator for push-to-talk */}
       {keyPressed && (
         <div className="convai-chat-listening-indicator">
@@ -318,12 +398,13 @@ const ConvaiChat = () => {
           onKeyDown={handleInputKeyDown}
           placeholder="Type your message..."
           className="convai-chat-input"
-          disabled={isLoading || keyPressed}
+          disabled={isLoading}
         />
-        <button onClick={handleSendMessage} className="convai-chat-send-button" disabled={isLoading || keyPressed}>
+        <button onClick={handleSendMessage} className="convai-chat-send-button" disabled={isLoading}>
           Send
         </button>
       </div>
+
       <div className="convai-chat-status">
         {keyPressed
           ? 'Listening (hold T)...'

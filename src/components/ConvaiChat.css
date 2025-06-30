@@ -71,6 +71,58 @@
   margin: 10px 0;
 }
 
+.convai-chat-minimize-btn {
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+  transition: background 0.2s, transform 0.2s;
+}
+.convai-chat-minimize-btn:hover {
+  background: #a78bfa;
+  transform: scale(1.08);
+}
+
+.convai-chat-ptt-btn {
+  display: none;
+}
+
+.convai-chat-ptt-btn-fixed {
+  position: fixed;
+  left: 50%;
+  bottom: 36px;
+  transform: translateX(-50%);
+  background: #7c3aed;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 88px;
+  height: 88px;
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(124, 58, 237, 0.18), 0 1.5px 8px rgba(0,0,0,0.12);
+  z-index: 3000;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+}
+.convai-chat-ptt-btn-fixed.listening, .convai-chat-ptt-btn-fixed:active {
+  background: #4f46e5;
+  color: #fff;
+  transform: scale(1.08);
+  box-shadow: 0 6px 32px rgba(124, 58, 237, 0.28), 0 2px 12px rgba(0,0,0,0.18);
+}
+
+
 .convai-chat-input-container {
   display: flex;
   padding: 12px 15px;

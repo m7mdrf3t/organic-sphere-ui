@@ -153,7 +153,8 @@ export default class Experience
 
         // Audio source blending: use the louder of mic or TTS at any moment
         let blendedAudioSource = null;
-        if (this.microphone && this.microphone.ready && this.geminiTTSAudio && this.geminiTTSAudio.ready) {
+        const isListening = typeof window !== 'undefined' && window.convaiIsListening;
+        if (isListening && this.microphone && this.microphone.ready && this.geminiTTSAudio && this.geminiTTSAudio.ready) {
             // Both available: blend
             const micLevels = this.microphone.levels || [];
             const ttsLevels = this.geminiTTSAudio.levels || [];
@@ -167,7 +168,7 @@ export default class Experience
                 volume: Math.max(this.microphone.volume || 0, this.geminiTTSAudio.volume || 0),
                 levels: blendedLevels
             };
-        } else if (this.microphone && this.microphone.ready) {
+        } else if (isListening && this.microphone && this.microphone.ready) {
             blendedAudioSource = this.microphone;
         } else if (this.geminiTTSAudio && this.geminiTTSAudio.ready) {
             blendedAudioSource = this.geminiTTSAudio;

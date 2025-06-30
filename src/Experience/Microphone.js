@@ -2,6 +2,22 @@ import Experience from './Experience.js'
 
 export default class Microphone
 {
+    startListening() {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
+            this.audioContext.resume();
+            console.log('[DEBUG] Microphone: audioContext resumed by startListening');
+        } else {
+            console.log('[DEBUG] Microphone: startListening called, but audioContext not suspended');
+        }
+    }
+    stopListening() {
+        if (this.audioContext && this.audioContext.state === 'running') {
+            this.audioContext.suspend();
+            console.log('[DEBUG] Microphone: audioContext suspended by stopListening');
+        } else {
+            console.log('[DEBUG] Microphone: stopListening called, but audioContext not running');
+        }
+    }
     constructor()
     {
         this.experience = new Experience()

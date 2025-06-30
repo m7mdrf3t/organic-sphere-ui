@@ -1,3 +1,8 @@
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import './App.css';
+import Experience from './Experience/Experience';
+import ConvaiChat from './components/ConvaiChat';
+
 // Global Web Audio patch for Convai TTS analysis
 (function() {
   if (typeof window !== 'undefined' && window.AudioContext && !window.__AUDIO_PATCHED_FOR_TTS__) {
@@ -29,10 +34,6 @@
   }
 })();
 
-import React, { useEffect, useRef, useState } from 'react';
-import './App.css';
-import Experience from './Experience/Experience';
-import ConvaiChat from './components/ConvaiChat';
 
 function App() {
   const containerRef = useRef(null);
@@ -41,6 +42,45 @@ function App() {
   const [chatText, setChatText] = useState('');
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+
+  // PTT logic at app level - using same methods as 'T' key
+  const startListening = useCallback(() => {
+    console.log('[DEBUG] [App] startListening called');
+    if (!isListening) {
+      setIsListening(true);
+      // Get the convaiClient from the window object (set by ConvaiChat component)
+      const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
+      
+      if (convaiClient && typeof convaiClient.startAudioChunk === 'function') {
+        console.log('[DEBUG] [App] Starting audio chunk with convaiClient');
+        // Reset any previous state
+        if (window.finalizedUserText) window.finalizedUserText.current = '';
+        if (window.npcTextRef) window.npcTextRef.current = '';
+        // Start audio capture
+        convaiClient.startAudioChunk();
+      } else {
+        console.log('[DEBUG] [App] No convaiClient.startAudioChunk found');
+      }
+    }
+  }, [isListening]);
+
+  const stopListening = useCallback(() => {
+    console.log('[DEBUG] [App] stopListening called');
+    if (isListening) {
+      setIsListening(false);
+      // Get the convaiClient from the window object
+      const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
+      
+      if (convaiClient && typeof convaiClient.endAudioChunk === 'function') {
+        console.log('[DEBUG] [App] Ending audio chunk with convaiClient');
+        // End audio capture and send for processing
+        convaiClient.endAudioChunk();
+      } else {
+        console.log('[DEBUG] [App] No convaiClient.endAudioChunk found');
+      }
+    }
+  }, [isListening]);
 
   useEffect(() => {
     console.log('Environment Variables:', {
@@ -151,6 +191,126 @@ function App() {
       >
         💬
       </button>
+
+      {/* Floating push-to-talk mic button, always visible */}
+      <div style={{
+        position: 'fixed',
+        left: '50%',
+        bottom: '36px',
+        transform: 'translateX(-50%)',
+        zIndex: 3000,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center'
+      }}>
+        <div style={{
+          width: '100px',
+          height: '100px',
+          position: 'relative',
+          transform: 'translateZ(0)' // Creates a new stacking context
+        }}>
+          <button
+            className={`convai-chat-ptt-btn-fixed${isListening ? ' listening' : ''}`}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              background: isListening 
+                ? 'rgba(79, 70, 229, 0.3)' 
+                : 'rgba(124, 58, 237, 0.2)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              color: '#fff',
+              border: '1px solid rgba(255, 255, 255, 0.18)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              padding: 0,
+              margin: 0,
+              boxShadow: isListening
+                ? '0 8px 32px rgba(67, 104, 124, 0.3)'
+                : '0 8px 32px rgba(0, 0, 0, 0.1)',
+              transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease, box-shadow 0.3s ease',
+              outline: 'none',
+              transform: isListening ? 'scale(1.05)' : 'scale(1)',
+              transformOrigin: 'center center',
+              willChange: 'transform',
+              overflow: 'hidden',
+              zIndex: 1
+            }}
+          onMouseDown={startListening}
+          onMouseUp={stopListening}
+          onMouseLeave={stopListening}
+          onTouchStart={startListening}
+          onTouchEnd={stopListening}
+          aria-label="Push to talk"
+        >
+          {/* Glass overlay */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+            borderRadius: '50%',
+            zIndex: 1
+          }} />
+          
+          {/* Button text */}
+          <span style={{
+            fontSize: '1.1rem',
+            fontWeight: '700',
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase',
+            userSelect: 'none',
+            lineHeight: '1.2',
+            textAlign: 'center',
+            padding: '4px 0',
+            textShadow: '0 1px 4px rgba(0,0,0,0.2)',
+            position: 'relative',
+            zIndex: 2,
+            transition: 'transform 0.2s ease',
+            transform: isListening ? 'scale(0.95)' : 'scale(1)',
+            pointerEvents: 'none' // Prevents text from interfering with button clicks
+          }}>
+            TALK
+          </span>
+          
+          {/* Active state glow */}
+          {isListening && (
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: '50%',
+              boxShadow: 'inset 0 0 20px 5px rgba(124, 58, 237, 0.4)',
+              zIndex: 3,
+              pointerEvents: 'none'
+            }} />
+          )}
+        </button>
+        </div>
+        
+        {/* Subtle hint text */}
+        <p style={{
+          color: 'rgba(255, 255, 255, 0.7)',
+          fontSize: '0.75rem',
+          marginTop: '8px',
+          textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+          textAlign: 'center',
+          opacity: 0.8,
+          transition: 'opacity 0.3s ease'
+        }}>
+          Hold to talk
+        </p>
+      </div>
 
       {/* Convai Chat Interface - Only render when experience is ready */}
       {isExperienceReady && (
