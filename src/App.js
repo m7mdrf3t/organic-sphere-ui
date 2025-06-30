@@ -167,9 +167,9 @@ function App() {
       {/* Floating push-to-talk mic button, always visible */}
       <div style={{
         position: 'fixed',
+        top: '50%',
         left: '50%',
-        bottom: '36px',
-        transform: 'translateX(-50%)',
+        transform: 'translate(-50%, -50%)',
         zIndex: 3000,
         display: 'flex',
         flexDirection: 'column',
@@ -190,7 +190,7 @@ function App() {
               width: '100%',
               height: '100%',
               background: isListening 
-                ? 'rgba(79, 70, 229, 0.3)' 
+                ? 'rgba(34, 197, 94, 0.85)' // greenish when pressed
                 : 'rgba(124, 58, 237, 0.2)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
@@ -204,11 +204,11 @@ function App() {
               padding: 0,
               margin: 0,
               boxShadow: isListening
-                ? '0 8px 32px rgba(67, 104, 124, 0.3)'
+                ? '0 8px 32px rgba(34, 197, 94, 0.4)'
                 : '0 8px 32px rgba(0, 0, 0, 0.1)',
               transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease, box-shadow 0.3s ease',
               outline: 'none',
-              transform: isListening ? 'scale(1.05)' : 'scale(1)',
+              transform: isListening ? 'scale(1.18)' : 'scale(1)',
               transformOrigin: 'center center',
               willChange: 'transform',
               overflow: 'hidden',
@@ -285,7 +285,44 @@ function App() {
       </div>
 
       {/* Convai Chat Interface - Only render when experience is ready */}
-      {/* ConvaiChat widget hidden as requested */}
+      {/* Convai Chat Interface - Only render when experience is ready and showChat is true */}
+      {isExperienceReady && (
+        <div style={{position: 'fixed', top: '-2000px', left: '-2000px', zIndex: -1}}>
+          <ConvaiChat 
+            isVisible={showChat} 
+            onClose={() => setShowChat(false)}
+            onTextUpdate={handleTextUpdate}
+          />
+        </div>
+      )}
+
+      {/* Chat Toggle Button moved out of visible screen as requested */}
+      <button 
+        onClick={toggleChat}
+        style={{
+          position: 'fixed',
+          top: '-1000px', // Move far above the visible area
+          left: '-1000px', // Move far left of the visible area
+          background: 'rgba(124, 58, 237, 0.9)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          width: '50px',
+          height: '50px',
+          fontSize: '24px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100,
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+          transition: 'transform 0.2s, background 0.2s',
+        }}
+        tabIndex={-1} // Remove from tab order
+        aria-label="Toggle chat"
+      >
+        💬
+      </button>
 
       {/* Visual feedback when NPC is talking */}
       {isNpcTalking && (
