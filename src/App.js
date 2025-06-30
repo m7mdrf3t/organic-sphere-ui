@@ -44,6 +44,8 @@ function App() {
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
 
+
+
   // PTT logic at app level - using same methods as 'T' key
   const startListening = useCallback(() => {
     console.log('[DEBUG] [App] startListening called');
@@ -107,17 +109,8 @@ function App() {
       experienceRef.current = experience;
       window.experience = experience;
 
-      // Microphone initialization
-      navigator.mediaDevices.getUserMedia({ audio: true })
-        .then(stream => {
-          if (window.experience && window.experience.microphone) {
-            window.experience.microphone.setStream(stream);
-            console.log('[DEBUG] Microphone: setStream called');
-          }
-        })
-        .catch(err => {
-          console.error('Microphone access denied:', err);
-        });
+      // Microphone stream is NOT set here; Convai SDK owns the microphone.
+      // If you want to visualize the mic, you must request access separately and only if available.
 
       // Helper for TTS audio element registration
       window.setGeminiTTSAudioElement = (audioElement) => {
