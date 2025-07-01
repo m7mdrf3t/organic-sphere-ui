@@ -45,10 +45,11 @@ export default class Renderer
         this.instance.domElement.style.width = '100%'
         this.instance.domElement.style.height = '100%'
 
-        // this.instance.setClearColor(0x414141, 1)
-        this.instance.setClearColor(this.clearColor, 1)
+        // Set clear color and ensure alpha is false for proper background rendering
+        this.instance.setClearColor(new THREE.Color(this.clearColor), 1)
         this.instance.setSize(this.config.width, this.config.height)
         this.instance.setPixelRatio(this.config.pixelRatio)
+        this.instance.setClearAlpha(1)
 
         this.instance.physicallyCorrectLights = true
         this.instance.outputColorSpace = THREE.SRGBColorSpace
@@ -86,7 +87,7 @@ export default class Renderer
         this.postProcess.unrealBloomPass.enabled = true
 
         this.postProcess.unrealBloomPass.tintColor = {}
-        this.postProcess.unrealBloomPass.tintColor.value = '#7f00ff'
+        this.postProcess.unrealBloomPass.tintColor.value = '#000000'
         this.postProcess.unrealBloomPass.tintColor.instance = new THREE.Color(this.postProcess.unrealBloomPass.tintColor.value)
         
         this.postProcess.unrealBloomPass.compositeMaterial.uniforms.uTintColor = { value: this.postProcess.unrealBloomPass.tintColor.instance }

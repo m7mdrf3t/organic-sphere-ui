@@ -103,10 +103,15 @@ void main() {
 `
 
 const fragmentShader = `
+uniform vec3 uBackgroundColor;
 varying vec3 vColor;
 
 void main() {
+    // Output the color with alpha for transparency
     gl_FragColor = vec4(vColor, 1.0);
+    
+    // If you want the sphere to be semi-transparent, you can use:
+    // gl_FragColor = vec4(vColor, 0.8); // 0.8 = 80% opacity
 }
 `
 
@@ -385,7 +390,8 @@ export default class Sphere
                 uFresnelPower: { value: 1.793 },
 
                 uTime: { value: 0 },
-                uInnerRadius: { value: 0.0 }  // 0.0 = fully hollow, 1.0 = full sphere
+                uInnerRadius: { value: 0.0 },  // 0.0 = fully hollow, 1.0 = full sphere
+                uBackgroundColor: { value: new THREE.Color(0x000000) } // Black background
             },
             defines:
             {

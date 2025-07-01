@@ -47,7 +47,13 @@ export default class Microphone
         this.analyserNode = this.audioContext.createAnalyser()
         this.analyserNode.fftSize = 256
         
-        this.mediaStreamSourceNode.connect(this.analyserNode)
+        // Create a gain node and set the gain (volume) higher (default is 1.0)
+        this.gainNode = this.audioContext.createGain()
+        this.gainNode.gain.value = 3.0  // Increase gain to 3x for better voice detection
+        
+        // Connect the nodes: source -> gain -> analyser
+        this.mediaStreamSourceNode.connect(this.gainNode)
+        this.gainNode.connect(this.analyserNode)
         
         this.floatTimeDomainData = new Float32Array(this.analyserNode.fftSize)
         this.byteFrequencyData = new Uint8Array(this.analyserNode.fftSize)
