@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/organic-sphere-ui/static/css/main.96ffb4fb.css",
-    "main.js": "/organic-sphere-ui/static/js/main.56a3dbcd.js",
+    "main.js": "/organic-sphere-ui/static/js/main.ca9fa014.js",
     "static/js/453.8d744184.chunk.js": "/organic-sphere-ui/static/js/453.8d744184.chunk.js",
     "index.html": "/organic-sphere-ui/index.html",
     "main.96ffb4fb.css.map": "/organic-sphere-ui/static/css/main.96ffb4fb.css.map",
-    "main.56a3dbcd.js.map": "/organic-sphere-ui/static/js/main.56a3dbcd.js.map",
+    "main.ca9fa014.js.map": "/organic-sphere-ui/static/js/main.ca9fa014.js.map",
     "453.8d744184.chunk.js.map": "/organic-sphere-ui/static/js/453.8d744184.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.96ffb4fb.css",
-    "static/js/main.56a3dbcd.js"
+    "static/js/main.ca9fa014.js"
   ]
 }
