@@ -5,6 +5,8 @@ import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
 import DebugPage from './pages/DebugPage';
 
+
+
 // Global Web Audio patch for Convai TTS analysis
 (function() {
   if (typeof window !== 'undefined' && window.AudioContext && !window.__AUDIO_PATCHED_FOR_TTS__) {
