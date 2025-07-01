@@ -108,7 +108,7 @@ varying vec3 vColor;
 
 void main() {
     // Output the color with alpha for transparency
-    gl_FragColor = vec4(vColor, 1.0);
+    gl_FragColor = vec4(vColor, 1);
     
     // If you want the sphere to be semi-transparent, you can use:
     // gl_FragColor = vec4(vColor, 0.8); // 0.8 = 80% opacity

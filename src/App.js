@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
 import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
+import DebugPage from './pages/DebugPage';
 
 // Global Web Audio patch for Convai TTS analysis
 (function() {
@@ -35,11 +37,11 @@ import ConvaiChat from './components/ConvaiChat';
 })();
 
 
-function App() {
+function MainApp() {
   const containerRef = useRef(null);
   const experienceRef = useRef(null);
+  const location = useLocation();
   const [showChat, setShowChat] = useState(false);
-  const [chatText, setChatText] = useState('');
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -133,6 +135,8 @@ function App() {
       }
     };
   }, []);
+
+  const [chatText, setChatText] = useState('');
 
   const handleTextUpdate = (text, source = 'user') => {
     setChatText(text);
@@ -361,6 +365,17 @@ function App() {
         }`
       }</style>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router basename="/organic-sphere-ui">
+      <Routes>
+        <Route path="/" element={<MainApp />} />
+        <Route path="/debug" element={<DebugPage />} />
+      </Routes>
+    </Router>
   );
 }
 

@@ -22,18 +22,25 @@ export default class Experience
     {
         if(Experience.instance)
         {
-            return Experience.instance
+            // If we already have an instance, update the target element if provided
+            if (_options.targetElement) {
+                Experience.instance.targetElement = _options.targetElement;
+                // Re-append the canvas if it exists
+                if (Experience.instance.renderer && Experience.instance.renderer.instance) {
+                    const canvas = Experience.instance.renderer.instance.domElement;
+                    if (canvas.parentElement) {
+                        canvas.parentElement.removeChild(canvas);
+                    }
+                    _options.targetElement.appendChild(canvas);
+                    Experience.instance.renderer.resize();
+                }
+            }
+            return Experience.instance;
         }
-        Experience.instance = this
+        Experience.instance = this;
 
         // Options
-        this.targetElement = _options.targetElement
-
-        if(!this.targetElement)
-        {
-            console.warn('Missing \'targetElement\' property')
-            return
-        }
+        this.targetElement = _options.targetElement || document.body;
 
         this.time = new Time()
         this.sizes = new Sizes()
@@ -101,9 +108,12 @@ export default class Experience
 
     setRenderer()
     {
-        this.renderer = new Renderer({ rendererInstance: this.rendererInstance })
-
-        this.targetElement.appendChild(this.renderer.instance.domElement)
+        this.renderer = new Renderer()
+        if (this.targetElement) {
+            this.targetElement.appendChild(this.renderer.instance.domElement)
+        } else {
+            document.body.appendChild(this.renderer.instance.domElement)
+        }
     }
 
     setResources()
