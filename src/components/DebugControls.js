@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Pane } from 'tweakpane';
 
@@ -242,7 +242,6 @@ export default function DebugControls({ experience }) {
         pane.dispose();
       }
     };
-
   }, [experience]);
 
   return (

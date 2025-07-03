@@ -1,13 +1,17 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { ConvaiClient } from 'convai-web-sdk';
 import Experience from '../Experience/Experience';
+import { ConvaiContext } from '../App'; 
+import { endConvaiSession, generateRandomUserId } from '../utils/apiService'; 
 
 // --- Push-to-talk ConvaiChat ---
 import './ConvaiChat.css';
 
 const ConvaiChat = () => {
-  const [minimized, setMinimized] = useState(false);
+  const { apiKey, characterId } = useContext(ConvaiContext);
 
+  // All hooks called unconditionally at the top
+  const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState(['Welcome to Convai Chat!']);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,94 +20,97 @@ const ConvaiChat = () => {
   const [userText, setUserText] = useState('');
   const [npcText, setNpcText] = useState('');
   const [audioPlay, setAudioPlay] = useState(false);
-  const [userEndOfResponse, setUserEndOfResponse] = useState(false); // This state isn't used in the provided JSX, consider if it's needed
   const [npcName, setNpcName] = useState('Npc');
   const [userName] = useState('User');
   const [avatar, setAvatar] = useState('');
-  const [gender, setGender] = useState('MALE'); // This state isn't used in the provided JSX, consider if it's needed
-  const [facialData, setFacialData] = useState([]); // This state isn't used in the provided JSX, consider if it's needed
-  const [emotionData, setEmotionData] = useState([]); // This state isn't used in the provided JSX, consider if it's needed
   const chatEndRef = useRef(null);
   const convaiClient = useRef(null);
   const npcTextRef = useRef('');
   const finalizedUserText = useRef('');
   const facialRef = useRef([]);
-  const keyPressTime = 100; // Moved to a constant, as it doesn't change
+  const keyPressTime = 100; 
   const [keyPressTimeStamp, setKeyPressTimeStamp] = useState();
 
-  const API_KEY = process.env.REACT_APP_CONVAI_API_KEY || 'ad6bffa834d46e0e70bb0bb9fae812fa';
-  const CHARACTER_ID = process.env.REACT_APP_CONVAI_CHARACTER_ID || 'aebf2e02-016f-11ef-9a5d-42010a7be00e';
+  // Add cleanup for end-session on component unmount
+  useEffect(() => {
+    return () => {
+      const userId = generateRandomUserId();
+      if (convaiClient.current && typeof convaiClient.current.endSession === 'function') {
+        endConvaiSession(userId).catch(err => console.error('Error ending session on unmount:', err));
+      }
+    };
+  }, []);
 
-  // Check microphone permissions and audio context status
-  const checkMicrophoneAccess = async () => {
-    try {
-      console.log('[DEBUG] Checking microphone permissions...');
-      const permissionResult = await navigator.permissions.query({ name: 'microphone' });
-      console.log('[DEBUG] Microphone permission state:', permissionResult.state);
-      
-      // Try to get audio stream to check if we can access the microphone
+  // Check microphone and audio context status
+  useEffect(() => {
+    const checkMicrophoneAccess = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        console.log('[DEBUG] Successfully accessed microphone stream');
-        // Check audio tracks
-        const audioTracks = stream.getAudioTracks();
-        console.log(`[DEBUG] Found ${audioTracks.length} audio tracks`);
-        audioTracks.forEach((track, i) => {
-          console.log(`[DEBUG] Audio Track ${i + 1}:`, {
-            enabled: track.enabled,
-            muted: track.muted,
-            readyState: track.readyState,
-            settings: track.getSettings()
-          });
-        });
-        // Stop all tracks to release the microphone
-        stream.getTracks().forEach(track => track.stop());
-      } catch (err) {
-        console.error('[DEBUG] Failed to access microphone:', err);
-      }
-    } catch (err) {
-      console.error('[DEBUG] Error checking microphone permissions:', err);
-    }
-  };
-
-  // Check Audio Context state
-  const checkAudioContext = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (AudioContext) {
-        const context = new AudioContext();
-        console.log('[DEBUG] AudioContext state:', context.state);
-        console.log('[DEBUG] AudioContext sample rate:', context.sampleRate, 'Hz');
+        console.log('[DEBUG] Checking microphone permissions...');
+        const permissionResult = await navigator.permissions.query({ name: 'microphone' });
+        console.log('[DEBUG] Microphone permission state:', permissionResult.state);
         
-        // Log when the audio context state changes
-        context.onstatechange = () => {
-          console.log('[DEBUG] AudioContext state changed to:', context.state);
-        };
-        
-        // Try to resume the audio context if it's suspended
-        if (context.state === 'suspended') {
-          console.log('[DEBUG] AudioContext is suspended, attempting to resume...');
-          context.resume().then(() => {
-            console.log('[DEBUG] AudioContext resumed successfully');
-          }).catch(err => {
-            console.error('[DEBUG] Failed to resume AudioContext:', err);
+        // Try to get audio stream to check if we can access the microphone
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('[DEBUG] Successfully accessed microphone stream');
+          // Check audio tracks
+          const audioTracks = stream.getAudioTracks();
+          console.log(`[DEBUG] Found ${audioTracks.length} audio tracks`);
+          audioTracks.forEach((track, i) => {
+            console.log(`[DEBUG] Audio Track ${i + 1}:`, {
+              enabled: track.enabled,
+              muted: track.muted,
+              readyState: track.readyState,
+              settings: track.getSettings()
+            });
           });
+          // Stop all tracks to release the microphone
+          stream.getTracks().forEach(track => track.stop());
+        } catch (err) {
+          console.error('[DEBUG] Failed to access microphone:', err);
         }
-      } else {
-        console.error('[DEBUG] Web Audio API not supported in this browser');
+      } catch (err) {
+        console.error('[DEBUG] Error checking microphone permissions:', err);
       }
-    } catch (err) {
-      console.error('[DEBUG] Error checking AudioContext:', err);
-    }
-  };
+    };
+
+    const checkAudioContext = () => {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          const context = new AudioContext();
+          console.log('[DEBUG] AudioContext state:', context.state);
+          console.log('[DEBUG] AudioContext sample rate:', context.sampleRate, 'Hz');
+          
+          // Log when the audio context state changes
+          context.onstatechange = () => {
+            console.log('[DEBUG] AudioContext state changed to:', context.state);
+          };
+          
+          // Try to resume the audio context if it's suspended
+          if (context.state === 'suspended') {
+            console.log('[DEBUG] AudioContext is suspended, attempting to resume...');
+            context.resume().then(() => {
+              console.log('[DEBUG] AudioContext resumed successfully');
+            }).catch(err => {
+              console.error('[DEBUG] Failed to resume AudioContext:', err);
+            });
+          }
+        } else {
+          console.error('[DEBUG] Web Audio API not supported in this browser');
+        }
+      } catch (err) {
+        console.error('[DEBUG] Error checking AudioContext:', err);
+      }
+    };
+
+    checkMicrophoneAccess();
+    checkAudioContext();
+  }, []);
 
   // Initialize Convai client and push-to-talk handlers
   useEffect(() => {
-    console.log('[DEBUG] Initializing ConvaiClient with API_KEY:', API_KEY, 'CHARACTER_ID:', CHARACTER_ID);
-    
-    // Check microphone and audio context status
-    checkMicrophoneAccess();
-    checkAudioContext();
+    console.log('[DEBUG] Initializing ConvaiClient with API_KEY:', apiKey, 'CHARACTER_ID:', characterId);
     
     // Log all network requests made by the Convai SDK
     const originalFetch = window.fetch;
@@ -136,9 +143,9 @@ const ConvaiChat = () => {
 
     console.log('[DEBUG] Creating new ConvaiClient instance');
     convaiClient.current = new ConvaiClient({
-      apiKey: API_KEY,
-      characterId: CHARACTER_ID,
-      enableAudio: true, // Enable audio input
+      apiKey: apiKey,
+      characterId: characterId,
+      enableAudio: true, 
       faceModel: 3,
       enableFacialData: true,
       voiceResponse: 'audio',
@@ -192,7 +199,7 @@ const ConvaiChat = () => {
 
     convaiClient.current.setErrorCallback((type, message) => {
       setMessages(prev => [...prev, `Error: ${type}: ${message}`]);
-      console.error('[CONVAI ERROR]', type, message); // Use console.error for errors
+      console.error('[CONVAI ERROR]', type, message); 
       if (type === 'audio' || type === 'permission') {
         alert('Microphone error: ' + message + '\nCheck browser permissions and ensure no other app is using the mic.');
       }
@@ -303,9 +310,9 @@ const ConvaiChat = () => {
     const fetchData = async () => {
       try {
         const url = 'https://api.convai.com/character/get';
-        const payload = { charID: CHARACTER_ID };
+        const payload = { charID: characterId };
         const headers = {
-          'CONVAI-API-KEY': API_KEY,
+          'CONVAI-API-KEY': apiKey,
           'Content-Type': 'application/json',
         };
         const response = await fetch(url, {
@@ -317,7 +324,6 @@ const ConvaiChat = () => {
         if (avatar !== data.model_details.modelLink) {
           setAvatar(data.model_details.modelLink);
           setNpcName(data.character_name);
-          setGender(data.voice_type);
         }
       } catch (error) {
         console.error('Error fetching character:', error);
@@ -330,16 +336,9 @@ const ConvaiChat = () => {
     convaiClient.current.onAudioStop(() => {
       setAudioPlay(false);
       facialRef.current = [];
-      setFacialData([]);
     });
 
-    // Cleanup for convaiClient
-    return () => {
-      if (convaiClient.current && typeof convaiClient.current.endSession === 'function') {
-        convaiClient.current.endSession();
-      }
-    };
-  }, [API_KEY, CHARACTER_ID, avatar]); // Add dependencies for useEffect
+  }, [apiKey, characterId, avatar]);
 
   // Keep isTalking in sync with audioPlay
   useEffect(() => {
@@ -369,7 +368,7 @@ const ConvaiChat = () => {
       }
     },
     [keyPressed]
-  ); // Dependency on keyPressed
+  ); 
 
   const handleKeyRelease = useCallback(
     e => {
@@ -396,7 +395,7 @@ const ConvaiChat = () => {
       }
     },
     [keyPressed, keyPressTimeStamp, keyPressTime]
-  ); // Dependencies for useCallback
+  ); 
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -405,7 +404,7 @@ const ConvaiChat = () => {
       window.removeEventListener('keydown', handleKeyPress);
       window.removeEventListener('keyup', handleKeyRelease);
     };
-  }, [handleKeyPress, handleKeyRelease]); // Dependencies for useEffect with useCallback functions
+  }, [handleKeyPress, handleKeyRelease]); 
 
   // Function to send message to Convai (text fallback)
   const sendMessageToConvai = useCallback(
@@ -421,18 +420,18 @@ const ConvaiChat = () => {
         await convaiClient.current.sendTextChunk(message);
       } catch (error) {
         setMessages(prev => [...prev, `Error: ${error.message}`]);
-        console.error('Error sending message to Convai:', error); // Log error
+        console.error('Error sending message to Convai:', error); 
       } finally {
         setIsLoading(false);
       }
     },
     []
-  ); // No dependencies if sendMessageToConvai doesn't rely on outside state/props
+  ); 
 
   // Handle send button click
   const handleSendMessage = () => {
     sendMessageToConvai(inputText);
-    setInputText(''); // Clear input after sending
+    setInputText(''); 
   };
 
   // Handle Enter key in input field
@@ -445,7 +444,7 @@ const ConvaiChat = () => {
   // Auto-scroll to bottom of chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, userText, npcText]); // Scroll when messages, userText, or npcText change
+  }, [messages, userText, npcText]); 
 
   // --- Register TTS audio element for sphere ripples when NPC starts talking ---
   useEffect(() => {
@@ -488,7 +487,6 @@ const ConvaiChat = () => {
       }
     }
   }, [isTalking]);
-
 
   // --- Unified push-to-talk logic ---
   // Keyboard: hold/release 'T' for push-to-talk using Convai's official pattern
@@ -606,20 +604,14 @@ const ConvaiChat = () => {
     };
   }, [keyPressed, keyPressTimeStamp]);
 
-  // --- RENDER ---
-  if (minimized) {
-    return (
-      <button
-        className="convai-chat-minimize-btn"
-        style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 200 }}
-        onClick={() => setMinimized(false)}
-        aria-label="Open chat"
-      >
-        💬
-      </button>
-    );
+  // Now handle conditional logic and rendering
+  if (!apiKey || !characterId) {
+    return <div>Error: Credentials missing</div>;
   }
+  const API_KEY = apiKey;
+  const CHARACTER_ID = characterId;
 
+  // Rest of the component code, including return statement
   return (
     <div className="convai-chat-container">
       {/* Minimize button */}

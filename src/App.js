@@ -1,11 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import './App.css';
 import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
 import DebugPage from './pages/DebugPage';
-
-
+import DebugControlsInMain from './components/DebugControlsInMain';
+import { useFetchConvaiCredentials, endConvaiSession } from './utils/apiService';
 
 // Global Web Audio patch for Convai TTS analysis
 (function() {
@@ -38,6 +38,7 @@ import DebugPage from './pages/DebugPage';
   }
 })();
 
+export const ConvaiContext = createContext();
 
 function MainApp() {
   const containerRef = useRef(null);
@@ -47,8 +48,9 @@ function MainApp() {
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [chatText, setChatText] = useState('');
 
-
+  const { apiKey, characterId } = React.useContext(ConvaiContext);
 
   // PTT logic at app level - using same methods as 'T' key
   const startListening = useCallback(() => {
@@ -96,10 +98,10 @@ function MainApp() {
 
   useEffect(() => {
     console.log('Environment Variables:', {
-      hasApiKey: !!process.env.REACT_APP_CONVAI_API_KEY,
-      hasCharacterId: !!process.env.REACT_APP_CONVAI_CHARACTER_ID
+      hasApiKey: !!apiKey,
+      hasCharacterId: !!characterId
     });
-  }, []);
+  }, [apiKey, characterId]);
   
   useEffect(() => {
     if (!experienceRef.current && containerRef.current) {
@@ -138,8 +140,6 @@ function MainApp() {
     };
   }, []);
 
-  const [chatText, setChatText] = useState('');
-
   const handleTextUpdate = (text, source = 'user') => {
     setChatText(text);
     if (source === 'npc') {
@@ -155,6 +155,7 @@ function MainApp() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+
       {/* Three.js Canvas */}
       <div
         ref={containerRef}
@@ -371,13 +372,30 @@ function MainApp() {
 }
 
 function App() {
+  const userId = 'testUser20'; // Make configurable if needed
+  const { apiKey, characterId, loading, error } = useFetchConvaiCredentials(userId);
+
+  useEffect(() => {
+    if (error) console.error(error);
+  }, [error]);
+
+  useEffect(() => {
+    return () => {
+      endConvaiSession(userId); // Call session end on unmount
+    };
+  }, [userId]);
+
+  if (loading) return <div>Loading credentials...</div>; // Optional UI handling
+
   return (
-    <Router basename="/organic-sphere-ui">
-      <Routes>
-        <Route path="/" element={<MainApp />} />
-        <Route path="/debug" element={<DebugPage />} />
-      </Routes>
-    </Router>
+    <ConvaiContext.Provider value={{ apiKey, characterId }}>
+      <Router basename="/organic-sphere-ui">
+        <Routes>
+          <Route path="/" element={<MainApp />} />
+          <Route path="/debug" element={<DebugPage />} />
+        </Routes>
+      </Router>
+    </ConvaiContext.Provider>
   );
 }
 
