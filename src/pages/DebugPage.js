@@ -3,9 +3,10 @@ import Experience from '../Experience/Experience';
 import DebugControls from '../components/DebugControls';
 import DebugChatWrapper from './DebugChatWrapper';
 
-const DebugPage = () => {
+function DebugPage() {
   const canvasRef = useRef(null);
   const [experience, setExperience] = useState(null);
+  const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
     let expInstance = null;
@@ -25,10 +26,6 @@ const DebugPage = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Show/hide chat widget state
-  const [showChat, setShowChat] = useState(false);
-  const [isListening, setIsListening] = useState(false);
 
   // PTT logic (copy from MainApp)
   const startListening = () => {
@@ -52,6 +49,13 @@ const DebugPage = () => {
         convaiClient.endAudioChunk();
       }
     }
+  };
+
+  const fetchData = async (url, options) => {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new Error('Network response was not ok');
+    const clone = response.clone(); // Clone to allow multiple reads
+    return clone.json(); // Or handle as needed
   };
 
   return (

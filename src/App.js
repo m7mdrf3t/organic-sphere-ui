@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback, createContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
 import DebugPage from './pages/DebugPage';
-import DebugControlsInMain from './components/DebugControlsInMain';
 import { useFetchConvaiCredentials, endConvaiSession } from './utils/apiService';
 
 // Global Web Audio patch for Convai TTS analysis
@@ -43,13 +42,10 @@ export const ConvaiContext = createContext();
 function MainApp() {
   const containerRef = useRef(null);
   const experienceRef = useRef(null);
-  const location = useLocation();
   const [showChat, setShowChat] = useState(false);
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [chatText, setChatText] = useState('');
-
   const { apiKey, characterId } = React.useContext(ConvaiContext);
 
   // PTT logic at app level - using same methods as 'T' key
@@ -141,7 +137,6 @@ function MainApp() {
   }, []);
 
   const handleTextUpdate = (text, source = 'user') => {
-    setChatText(text);
     if (source === 'npc') {
       setIsNpcTalking(true);
       // You can add visual feedback or trigger animations here

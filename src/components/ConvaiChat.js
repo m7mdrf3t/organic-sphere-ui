@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { ConvaiClient } from 'convai-web-sdk';
-import Experience from '../Experience/Experience';
 import { ConvaiContext } from '../App'; 
 import { endConvaiSession, generateRandomUserId } from '../utils/apiService'; 
 
@@ -11,7 +10,6 @@ const ConvaiChat = () => {
   const { apiKey, characterId } = useContext(ConvaiContext);
 
   // All hooks called unconditionally at the top
-  const [minimized, setMinimized] = useState(false);
   const [messages, setMessages] = useState(['Welcome to Convai Chat!']);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -608,43 +606,27 @@ const ConvaiChat = () => {
   if (!apiKey || !characterId) {
     return <div>Error: Credentials missing</div>;
   }
-  const API_KEY = apiKey;
-  const CHARACTER_ID = characterId;
 
   // Rest of the component code, including return statement
   return (
     <div className="convai-chat-container">
-      {/* Minimize button */}
-      <button
-        className="convai-chat-minimize-btn"
-        style={{ position: 'absolute', top: 10, right: 10, zIndex: 200 }}
-        onClick={() => setMinimized(true)}
-        aria-label="Minimize chat"
-      >
-        &minus;
-      </button>
-      {/* Listening indicator for push-to-talk */}
+      {/* Direct content, removed minimized check and button */}
       {keyPressed && (
         <div className="convai-chat-listening-indicator">
           Listening... (Release T to stop)
         </div>
       )}
       <div className="convai-chat-area">
-        {messages.map((msg, index) => {
-          const isUser = msg.startsWith('You:');
-          return (
-            <div key={index} className={'convai-chat-message' + (isUser ? ' user' : ' ai')}>
-              {msg.replace('You:', userName + ':').replace('AI:', npcName + ':')}
-            </div>
-          );
-        })}
-        {/* Real-time transcript display */}
+        {messages.map((msg, index) => (
+          <div key={index} className={'convai-chat-message' + (msg.startsWith('You:') ? ' user' : ' ai')}>
+            {msg.replace('You:', userName + ':').replace('AI:', npcName + ':')}
+          </div>
+        ))}
         {keyPressed && userText && (
           <div className="convai-chat-message convai-chat-typing-indicator">
             {userName}: {userText}
           </div>
         )}
-        {/* NPC real-time response */}
         {isTalking && npcText && (
           <div className="convai-chat-message convai-chat-typing-indicator">
             {npcName}: {npcText}
