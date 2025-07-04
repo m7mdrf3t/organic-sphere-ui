@@ -1,10 +1,11 @@
+
 import React, { useEffect, useRef, useState, useCallback, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
 import DebugPage from './pages/DebugPage';
-import { useFetchConvaiCredentials, endConvaiSession } from './utils/apiService';
+import { useFetchConvaiCredentials, endLoadBalancerSession, generateRandomUserId } from './utils/apiService';
 
 // Global Web Audio patch for Convai TTS analysis
 (function() {
@@ -46,7 +47,8 @@ function MainApp() {
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const { apiKey, characterId } = React.useContext(ConvaiContext);
+  // userId is now correctly retrieved from Context, which is provided by the parent App component
+  const { apiKey, characterId, userId } = React.useContext(ConvaiContext);
 
   // PTT logic at app level - using same methods as 'T' key
   const startListening = useCallback(() => {
@@ -95,10 +97,11 @@ function MainApp() {
   useEffect(() => {
     console.log('Environment Variables:', {
       hasApiKey: !!apiKey,
-      hasCharacterId: !!characterId
+      hasCharacterId: !!characterId,
+      userId: userId // Log userId here for debugging
     });
-  }, [apiKey, characterId]);
-  
+  }, [apiKey, characterId, userId]); // Add userId to dependencies
+
   useEffect(() => {
     if (!experienceRef.current && containerRef.current) {
       console.log('Initializing Experience...');
@@ -110,9 +113,6 @@ function MainApp() {
       // Store the experience instance in both ref and window for debugging
       experienceRef.current = experience;
       window.experience = experience;
-
-      // Microphone stream is NOT set here; Convai SDK owns the microphone.
-      // If you want to visualize the mic, you must request access separately and only if available.
 
       // Helper for TTS audio element registration
       window.setGeminiTTSAudioElement = (audioElement) => {
@@ -134,7 +134,9 @@ function MainApp() {
         experienceRef.current = null;
       }
     };
-  }, []);
+  }, []); // Empty dependency array means this runs once on mount
+
+  useEffect(() => { console.log('MainApp rendered, isListening:', isListening); }, [isListening]);
 
   const handleTextUpdate = (text, source = 'user') => {
     if (source === 'npc') {
@@ -150,6 +152,10 @@ function MainApp() {
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+      {/* User ID display, now with randomly generated ID */}
+      <div style={{ position: 'fixed', top: '10px', left: '10px', zIndex: 2000, color: 'white', background: 'rgba(0,0,0,0.5)', padding: '5px', borderRadius: '4px' }}>
+        User ID: {userId}
+      </div>
 
       {/* Three.js Canvas */}
       <div
@@ -164,8 +170,6 @@ function MainApp() {
         }}
       />
       
-      {/* Chat Toggle Button hidden as requested */}
-
       {/* Floating push-to-talk mic button, always visible */}
       <div style={{
         position: 'fixed',
@@ -286,7 +290,6 @@ function MainApp() {
         </p>
       </div>
 
-      {/* Convai Chat Interface - Only render when experience is ready */}
       {/* Convai Chat Interface - Only render when experience is ready and showChat is true */}
       {isExperienceReady && (
         <div style={{position: 'fixed', top: '-2000px', left: '-2000px', zIndex: -1}}>
@@ -326,6 +329,13 @@ function MainApp() {
         💬
       </button>
 
+      <button 
+        onClick={() => endLoadBalancerSession(userId)} 
+        style={{ position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)', zIndex: '1000', padding: '10px 20px', backgroundColor: 'red', color: 'white', border: 'none', borderRadius: '5px' }}
+      >
+        Close Session
+      </button>
+
       {/* Visual feedback when NPC is talking */}
       {isNpcTalking && (
         <div style={{
@@ -352,6 +362,7 @@ function MainApp() {
           }}></span>
           AI is speaking...
         </div>
+
       )}
       
       {/* Add keyframes for the pulse animation */}
@@ -367,23 +378,125 @@ function MainApp() {
 }
 
 function App() {
-  const userId = 'testUser20'; // Make configurable if needed
+  // Corrected: Initialize userId using useState and localStorage for persistence
+  const [userId, setUserId] = useState(() => {
+    const storedUserId = localStorage.getItem('convaiUserId');
+    if (storedUserId) {
+      console.log('[App] Using stored userId:', storedUserId);
+      return storedUserId;
+    }
+    const newId = generateRandomUserId();
+    localStorage.setItem('convaiUserId', newId);
+    console.log('[App] Generated and stored new userId:', newId);
+    return newId;
+  });
+
   const { apiKey, characterId, loading, error } = useFetchConvaiCredentials(userId);
 
   useEffect(() => {
     if (error) console.error(error);
   }, [error]);
 
+  // Use a ref to store the userId for the cleanup function
+  const userIdRef = useRef(userId);
   useEffect(() => {
-    return () => {
-      endConvaiSession(userId); // Call session end on unmount
-    };
+    userIdRef.current = userId;
   }, [userId]);
 
-  if (loading) return <div>Loading credentials...</div>; // Optional UI handling
+  // Ref to hold the timeout ID for visibilitychange
+  const sessionEndTimeoutRef = useRef(null);
+  const VISIBILITY_TIMEOUT_MS = 20 * 1000; // 20 seconds
+
+  // Function to perform the actual session end
+  const performSessionEnd = useCallback((eventType) => {
+    console.log(`[DEBUG] performSessionEnd triggered by: ${eventType}`);
+    if (userIdRef.current) {
+      console.log(`[DEBUG] Attempting to send beacon for userId: ${userIdRef.current}`);
+      const data = JSON.stringify({ userId: userIdRef.current });
+      const url = 'https://patient-transformation-production.up.railway.app/api/end-session';
+      
+      try {
+          const beaconSent = navigator.sendBeacon(url, new Blob([data], { type: 'application/json' }));
+          console.log(`[DEBUG] sendBeacon call result for userId ${userIdRef.current}: ${beaconSent}`);
+          if (!beaconSent) {
+              console.warn('[DEBUG] sendBeacon returned false. Data might not be sent reliably by the browser.');
+          }
+      } catch (e) {
+          console.error('[DEBUG] Error during sendBeacon call:', e);
+      }
+    } else {
+        console.warn('[DEBUG] userIdRef.current is not available. Cannot send beacon.');
+    }
+
+    // Also call Convai SDK's endSession if available
+    if (window.convaiClient && typeof window.convaiClient.endSession === 'function') {
+      console.log('[DEBUG] Calling Convai SDK endSession in App.js.');
+      window.convaiClient.endSession();
+    }
+  }, []); // No dependencies as it uses userIdRef.current and window.convaiClient
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Clear any pending visibilitychange timeout immediately
+      if (sessionEndTimeoutRef.current) {
+        clearTimeout(sessionEndTimeoutRef.current);
+        sessionEndTimeoutRef.current = null;
+        console.log('[DEBUG] beforeunload: Cleared pending visibilitychange timeout.');
+      }
+      // End session immediately on full page unload/navigation
+      performSessionEnd('beforeunload');
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        console.log(`[DEBUG] visibilitychange: Page is hidden. Setting ${VISIBILITY_TIMEOUT_MS / 1000}s timeout to end session.`);
+        // Set a timeout to end the session
+        sessionEndTimeoutRef.current = setTimeout(() => {
+          performSessionEnd('visibilitychange (hidden after timeout)');
+          sessionEndTimeoutRef.current = null; // Clear the ref after execution
+        }, VISIBILITY_TIMEOUT_MS);
+      } else { // document.visibilityState === 'visible'
+        // If the page becomes visible again, clear the timeout
+        if (sessionEndTimeoutRef.current) {
+          clearTimeout(sessionEndTimeoutRef.current);
+          sessionEndTimeoutRef.current = null;
+          console.log('[DEBUG] visibilitychange: Page is visible. Cleared pending session end timeout.');
+        } else {
+          console.log('[DEBUG] visibilitychange: Page is visible. No pending session end timeout.');
+        }
+      }
+    };
+
+    // Attach event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Return a cleanup function for when the component unmounts
+    return () => {
+      console.log('[DEBUG] App component unmount cleanup (removing event listeners).');
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Ensure any pending timeout is cleared on component unmount
+      if (sessionEndTimeoutRef.current) {
+        clearTimeout(sessionEndTimeoutRef.current);
+        sessionEndTimeoutRef.current = null;
+        console.log('[DEBUG] App unmount: Cleared pending session end timeout.');
+      }
+    };
+  }, [performSessionEnd]); // performSessionEnd is a dependency as it's a useCallback
+
+  if (loading) return <div>Loading credentials...</div>;
+
+  // Render error if credentials could not be fetched
+  if (error) return <div style={{ color: 'red', padding: '20px' }}>Error: {error}</div>;
+
+  // Ensure apiKey and characterId are available before rendering MainApp
+  if (!apiKey || !characterId) {
+    return <div style={{ color: 'orange', padding: '20px' }}>Waiting for API credentials...</div>;
+  }
 
   return (
-    <ConvaiContext.Provider value={{ apiKey, characterId }}>
+    <ConvaiContext.Provider value={{ userId, apiKey, characterId }}>
       <Router basename="/organic-sphere-ui">
         <Routes>
           <Route path="/" element={<MainApp />} />

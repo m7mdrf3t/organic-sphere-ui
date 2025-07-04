@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback, useContext } from 'react';
 import { ConvaiClient } from 'convai-web-sdk';
 import { ConvaiContext } from '../App'; 
-import { endConvaiSession, generateRandomUserId } from '../utils/apiService'; 
+import { endLoadBalancerSession } from '../utils/apiService'; 
 
 // --- Push-to-talk ConvaiChat ---
 import './ConvaiChat.css';
 
 const ConvaiChat = () => {
-  const { apiKey, characterId } = useContext(ConvaiContext);
+  const { apiKey, characterId, userId } = useContext(ConvaiContext);
 
   // All hooks called unconditionally at the top
   const [messages, setMessages] = useState(['Welcome to Convai Chat!']);
@@ -32,12 +32,11 @@ const ConvaiChat = () => {
   // Add cleanup for end-session on component unmount
   useEffect(() => {
     return () => {
-      const userId = generateRandomUserId();
       if (convaiClient.current && typeof convaiClient.current.endSession === 'function') {
-        endConvaiSession(userId).catch(err => console.error('Error ending session on unmount:', err));
+        endLoadBalancerSession(userId).catch(err => console.error('Error ending session on unmount:', err));
       }
     };
-  }, []);
+  }, [userId]);
 
   // Check microphone and audio context status
   useEffect(() => {
@@ -108,6 +107,16 @@ const ConvaiChat = () => {
 
   // Initialize Convai client and push-to-talk handlers
   useEffect(() => {
+    if (!apiKey || !characterId) {
+      console.log('[DEBUG] ConvaiClient init skipped: missing API Key or Character ID.');
+      return;
+    }
+
+    if (convaiClient.current) {
+      console.log('[DEBUG] ConvaiClient already initialized. Skipping re-initialization.');
+      return; // Prevent re-initialization if already initialized
+    }
+
     console.log('[DEBUG] Initializing ConvaiClient with API_KEY:', apiKey, 'CHARACTER_ID:', characterId);
     
     // Log all network requests made by the Convai SDK
@@ -336,7 +345,7 @@ const ConvaiChat = () => {
       facialRef.current = [];
     });
 
-  }, [apiKey, characterId, avatar]);
+  }, [apiKey, characterId]);
 
   // Keep isTalking in sync with audioPlay
   useEffect(() => {
@@ -601,6 +610,22 @@ const ConvaiChat = () => {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [keyPressed, keyPressTimeStamp]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (convaiClient.current && typeof convaiClient.current.endSession === 'function') {
+        convaiClient.current.endSession();  // Call Convai SDK's endSession method
+      } 
+      endLoadBalancerSession(userId).catch(err => console.error('Error ending load balancer session on beforeunload:', err));
+      console.log('[DEBUG] Attempting to end session on beforeunload');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);  // Cleanup listener
+    };
+  }, [userId]);
 
   // Now handle conditional logic and rendering
   if (!apiKey || !characterId) {
