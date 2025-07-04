@@ -350,7 +350,7 @@ const ConvaiChat = () => {
   // Keep isTalking in sync with audioPlay
   useEffect(() => {
     if (!audioPlay) setIsTalking(false);
-  }, [audioPlay]);
+  }, [audioPlay, avatar]);
 
   // Push-to-talk handlers
   const handleKeyPress = useCallback(

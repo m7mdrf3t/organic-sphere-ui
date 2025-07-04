@@ -41,6 +41,7 @@ export default class Experience
 
         // Options
         this.targetElement = _options.targetElement || document.body;
+        this.userData = _options.userData || {};
 
         this.time = new Time()
         this.sizes = new Sizes()
@@ -51,7 +52,7 @@ export default class Experience
         this.setCamera()
         this.setRenderer()
         this.setResources()
-                this.setMicrohopne()
+        this.setMicrohopne()
         this.setGeminiTTSAudio()
         this.setWorld()
         
@@ -201,6 +202,10 @@ export default class Experience
         {
             this.update()
         })
+    }
+
+    updateUserData(newUserData) {
+        this.userData = { ...this.userData, ...newUserData };
     }
 
     resize()

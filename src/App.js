@@ -1,11 +1,10 @@
-
 import React, { useEffect, useRef, useState, useCallback, createContext } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import Experience from './Experience/Experience';
 import ConvaiChat from './components/ConvaiChat';
 import DebugPage from './pages/DebugPage';
-import { useFetchConvaiCredentials, endLoadBalancerSession, generateRandomUserId } from './utils/apiService';
+import { useFetchConvaiCredentials, endLoadBalancerSession } from './utils/apiService';
 
 // Global Web Audio patch for Convai TTS analysis
 (function() {
@@ -47,8 +46,48 @@ function MainApp() {
   const [isNpcTalking, setIsNpcTalking] = useState(false);
   const [isExperienceReady, setIsExperienceReady] = useState(false);
   const [isListening, setIsListening] = useState(false);
+
+  // State to store data RECEIVED from the parent (DrSelf.jsx)
+  const [receivedFirstName, setReceivedFirstName] = useState('');
+  const [receivedSubscriptionTier, setReceivedSubscriptionTier] = useState('');
+  const [receivedSubscriptionStatus, setReceivedSubscriptionStatus] = useState('');
+  // uniqueID will be userId from ConvaiContext, which is also passed from DrSelf.jsx via URL/message
+
   // userId is now correctly retrieved from Context, which is provided by the parent App component
   const { apiKey, characterId, userId } = React.useContext(ConvaiContext);
+
+  // Effect to listen for messages from the parent window (DrSelf.jsx)
+  useEffect(() => {
+    const handleMessageFromParent = (event) => {
+      // IMPORTANT: Verify the origin of the sender (DrSelf.jsx's origin) for security
+      // Replace 'https://m7mdrf3t.github.io' with the actual origin of your DrSelf.jsx app
+      // For local development, you might use 'http://localhost:port' or even '*' temporarily,
+      // but always specify the exact origin in production.
+      if (event.origin !== 'https://m7mdrf3t.github.io') {
+        console.warn(`[DEBUG] MainApp received message from unexpected origin: ${event.origin}`);
+        return;
+      }
+
+      // Debugging: Print the entire message data to the console
+      console.log('[DEBUG] MainApp received message from parent:', event.data);
+
+      if (event.data && event.data.type === 'initialUserData') {
+        console.log('[DEBUG] MainApp processing initial user data from parent:', event.data);
+        setReceivedFirstName(event.data.firstName || '');
+        setReceivedSubscriptionTier(event.data.subscriptionTier || '');
+        setReceivedSubscriptionStatus(event.data.subscriptionStatus || '');
+        // userId (uniqueID) is already managed by ConvaiContext, and DrSelf.jsx should pass it
+        // either via URL parameter or as part of this initialUserData message.
+        // If it's part of the message, you could update the ConvaiContext's userId here if needed,
+        // but typically it's set once on App load.
+      }
+    };
+
+    window.addEventListener('message', handleMessageFromParent);
+    return () => {
+      window.removeEventListener('message', handleMessageFromParent);
+    };
+  }, []); // Run once on mount to set up the listener
 
   // PTT logic at app level - using same methods as 'T' key
   const startListening = useCallback(() => {
@@ -57,10 +96,10 @@ function MainApp() {
       setIsListening(true);
       // Update global listening state for sphere visualization
       window.convaiIsListening = true;
-      
+
       // Get the convaiClient from the window object (set by ConvaiChat component)
       const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
-      
+
       if (convaiClient && typeof convaiClient.startAudioChunk === 'function') {
         console.log('[DEBUG] [App] Starting audio chunk with convaiClient');
         // Reset any previous state
@@ -80,10 +119,10 @@ function MainApp() {
       setIsListening(false);
       // Update global listening state for sphere visualization
       window.convaiIsListening = false;
-      
+
       // Get the convaiClient from the window object
       const convaiClient = window.convaiClient || (window.experience && window.experience.convaiClient);
-      
+
       if (convaiClient && typeof convaiClient.endAudioChunk === 'function') {
         console.log('[DEBUG] [App] Ending audio chunk with convaiClient');
         // End audio capture and send for processing
@@ -106,10 +145,18 @@ function MainApp() {
     if (!experienceRef.current && containerRef.current) {
       console.log('Initializing Experience...');
       // Create experience
+      // Pass the received user data as props to the Experience component
       const experience = new Experience({
-        targetElement: containerRef.current
+        targetElement: containerRef.current,
+        // Pass user data to Experience component
+        userData: {
+          firstName: receivedFirstName,
+          subscriptionTier: receivedSubscriptionTier,
+          uniqueID: userId, // Use userId from ConvaiContext as uniqueID
+          subscriptionStatus: receivedSubscriptionStatus,
+        }
       });
-      
+
       // Store the experience instance in both ref and window for debugging
       experienceRef.current = experience;
       window.experience = experience;
@@ -121,10 +168,24 @@ function MainApp() {
           console.log('[DEBUG] GeminiTTSAudio: setAudioElement called from App');
         }
       };
-      
+
       console.log('Experience initialized:', experience);
       setIsExperienceReady(true);
     }
+
+    // Re-initialize Experience if received user data changes (optional, depends on Experience's reactivity)
+    // If Experience needs to react to live updates, you'd need a method on `experienceRef.current`
+    // or re-create it. For initial load, passing props in the constructor is fine.
+    // If you need dynamic updates, `Experience` would need a `setUserData` method or similar.
+    if (experienceRef.current) {
+        experienceRef.current.updateUserData({
+            firstName: receivedFirstName,
+            subscriptionTier: receivedSubscriptionTier,
+            uniqueID: userId,
+            subscriptionStatus: receivedSubscriptionStatus,
+        });
+    }
+
 
     return () => {
       console.log('Cleaning up Experience...');
@@ -134,7 +195,7 @@ function MainApp() {
         experienceRef.current = null;
       }
     };
-  }, []); // Empty dependency array means this runs once on mount
+  }, [receivedFirstName, receivedSubscriptionTier, receivedSubscriptionStatus, userId]); // Re-run if these props change
 
   useEffect(() => { console.log('MainApp rendered, isListening:', isListening); }, [isListening]);
 
@@ -378,30 +439,35 @@ function MainApp() {
 }
 
 function App() {
-  // Corrected: Initialize userId using useState and localStorage for persistence
-  const [userId, setUserId] = useState(() => {
-    const storedUserId = localStorage.getItem('convaiUserId');
-    if (storedUserId) {
-      console.log('[App] Using stored userId:', storedUserId);
-      return storedUserId;
-    }
-    const newId = generateRandomUserId();
-    localStorage.setItem('convaiUserId', newId);
-    console.log('[App] Generated and stored new userId:', newId);
-    return newId;
-  });
+   const [userId, setUserId] = useState('');
+  // For testing purposes, set a placeholder userId. Remove this in production.
+  //const [userId, setUserId] = useState('MCY9980');
 
   const { apiKey, characterId, loading, error } = useFetchConvaiCredentials(userId);
 
   useEffect(() => {
-    if (error) console.error(error);
-  }, [error]);
+    console.log('[DEBUG] UserId updated to:', userId);
+    if (!userId) {
+      console.warn('[WARN] UserId is not set, potential issue with session initialization.');
+    }
+    if (loading) console.log('[DEBUG] Fetching credentials...');
+    if (error) console.error('[ERROR] Credential fetch failed:', error);
+  }, [userId, loading, error]);
 
-  // Use a ref to store the userId for the cleanup function
-  const userIdRef = useRef(userId);
   useEffect(() => {
-    userIdRef.current = userId;
-  }, [userId]);
+    const handleMessageFromParent = (event) => {
+      if (event.origin !== 'https://m7mdrf3t.github.io') {
+        console.warn(`[DEBUG] App received message from unexpected origin: ${event.origin}`);
+        return;
+      }
+      console.log('[DEBUG] App received message from parent:', event.data);
+      if (event.data && event.data.type === 'initialUserData') {
+        setUserId(event.data.uniqueID || ''); // Override placeholder with actual ID if received
+      }
+    };
+    window.addEventListener('message', handleMessageFromParent);
+    return () => window.removeEventListener('message', handleMessageFromParent);
+  }, []);
 
   // Ref to hold the timeout ID for visibilitychange
   const sessionEndTimeoutRef = useRef(null);
@@ -410,30 +476,26 @@ function App() {
   // Function to perform the actual session end
   const performSessionEnd = useCallback((eventType) => {
     console.log(`[DEBUG] performSessionEnd triggered by: ${eventType}`);
-    if (userIdRef.current) {
-      console.log(`[DEBUG] Attempting to send beacon for userId: ${userIdRef.current}`);
-      const data = JSON.stringify({ userId: userIdRef.current });
-      const url = 'https://patient-transformation-production.up.railway.app/api/end-session';
-      
+    if (userId) {
+      console.log(`[DEBUG] Attempting to send beacon for userId: ${userId}`);
+      const data = JSON.stringify({ userId: userId });
       try {
-          const beaconSent = navigator.sendBeacon(url, new Blob([data], { type: 'application/json' }));
-          console.log(`[DEBUG] sendBeacon call result for userId ${userIdRef.current}: ${beaconSent}`);
-          if (!beaconSent) {
-              console.warn('[DEBUG] sendBeacon returned false. Data might not be sent reliably by the browser.');
-          }
+        const beaconSent = navigator.sendBeacon('https://patient-transformation-production.up.railway.app/api/end-session', data);
+        console.log(`[DEBUG] sendBeacon call result for userId ${userId}: ${beaconSent}`);
+        if (!beaconSent) {
+          console.warn('[DEBUG] sendBeacon returned false. Data might not be sent reliably by the browser.');
+        }
       } catch (e) {
-          console.error('[DEBUG] Error during sendBeacon call:', e);
+        console.error('[DEBUG] Error during sendBeacon call:', e);
       }
     } else {
-        console.warn('[DEBUG] userIdRef.current is not available. Cannot send beacon.');
+      console.warn('[DEBUG] userId is not available. Cannot send beacon.');
     }
-
-    // Also call Convai SDK's endSession if available
     if (window.convaiClient && typeof window.convaiClient.endSession === 'function') {
       console.log('[DEBUG] Calling Convai SDK endSession in App.js.');
       window.convaiClient.endSession();
     }
-  }, []); // No dependencies as it uses userIdRef.current and window.convaiClient
+  }, [userId]); // Added userId dependency
 
   useEffect(() => {
     const handleBeforeUnload = () => {
@@ -484,6 +546,27 @@ function App() {
       }
     };
   }, [performSessionEnd]); // performSessionEnd is a dependency as it's a useCallback
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('[DEBUG] Tab hidden, ending Convai session');
+        window.location.reload(); // Force page refresh
+      }
+    };
+    const handlePageHide = async () => {
+      console.log('[DEBUG] Page hidden or unloaded, ending Convai session');
+      window.location.reload(); // Force page refresh
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []);
 
   if (loading) return <div>Loading credentials...</div>;
 

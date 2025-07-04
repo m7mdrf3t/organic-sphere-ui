@@ -67,7 +67,7 @@ export const useFetchConvaiCredentials = (userId) => {
 
   }, [userId]); // Dependency: re-run if userId changes
 
-  return { apiKey, characterId, loading, error };
+  return { apiKey, characterId, loading, error, resetCredentials: async () => { if (userId) { await endLoadBalancerSession(userId); } setApiKey(null); setCharacterId(null); } };
 };
 
 export const endLoadBalancerSession = async (userId) => {
